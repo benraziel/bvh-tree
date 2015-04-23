@@ -152,30 +152,63 @@ BVH.prototype.splitNode = function(node) {
         return;
     }
 
-    // in case split succeeded, choose to split by the axis which resulted in the most balanced split of shapes between the two child nodes
-    var node0Elements = [];
-    var node1Elements = [];
-    var xImbalance = Math.abs(node0XElements.length - node1XElements.length);
-    var yImbalance = Math.abs(node0YElements.length - node1YElements.length);
-    var zImbalance = Math.abs(node0ZElements.length - node1ZElements.length);
-
-    if (xImbalance < yImbalance) {
-        if (xImbalance < zImbalance) { // split by x
+    // in case one of the splits failed, choose to split by the axis which resulted in the most balanced split of shapes between the two child nodes
+    var defaultAxisFailed = false;
+    if ((node._level % 3 === 0)) {
+        if (splitXFailed) {
+            defaultAxisFailed = true;
+        }
+        else {
             node0Elements = node0XElements;
             node1Elements = node1XElements;
+        }
+    }
+
+    if ((node._level % 3 === 1)) {
+        if (splitYFailed) {
+            defaultAxisFailed = true;
+        }
+        else {
+            node0Elements = node0YElements;
+            node1Elements = node1YElements;
+        }
+    }
+
+    if ((node._level % 3 === 2)) {
+        if (splitZFailed) {
+            defaultAxisFailed = true;
+        }
+        else {
+            node0Elements = node0ZElements;
+            node1Elements = node1ZElements;
+        }
+    }
+
+    if (defaultAxisFailed) {
+        var node0Elements = [];
+        var node1Elements = [];
+        var xImbalance = Math.abs(node0XElements.length - node1XElements.length);
+        var yImbalance = Math.abs(node0YElements.length - node1YElements.length);
+        var zImbalance = Math.abs(node0ZElements.length - node1ZElements.length);
+
+        if (xImbalance < yImbalance) {
+            if (xImbalance < zImbalance) { // split by x
+                node0Elements = node0XElements;
+                node1Elements = node1XElements;
+            }
+            else { // split by z
+                node0Elements = node0ZElements;
+                node1Elements = node1ZElements;
+            }
+        }
+        else if (yImbalance < zImbalance) { // split by y
+            node0Elements = node0YElements;
+            node1Elements = node1YElements;
         }
         else { // split by z
             node0Elements = node0ZElements;
             node1Elements = node1ZElements;
         }
-    }
-    else if (yImbalance < zImbalance) { // split by y
-        node0Elements = node0YElements;
-        node1Elements = node1YElements;
-    }
-    else { // split by z
-        node0Elements = node0ZElements;
-        node1Elements = node1ZElements;
     }
 
     // sort the elements in range (startIndex, endIndex) according to which node they should be at
