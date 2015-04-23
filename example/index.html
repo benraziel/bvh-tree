@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>bvh-js demo</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<style>
+body {
+    font-family: Monospace;
+    background-color: #000;
+    color: #fff;
+    margin: 0px;
+    overflow: hidden;
+}
+#info {
+    color: #fff;
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    text-align: center;
+    z-index: 100;
+    display:block;
+}
+#info a, .button { color: #8abbff; font-weight: bold; text-decoration: underline; cursor: pointer }
+</style>
+</head>
+
+<body>
+<div id="info">
+    <b>bvh-js</b> by <a href="https://twitter.com/benraziel" target="_blank">Ben Raziel</a> | <a href="https://github.com/benraziel/bvh-js" target="_blank">github</a>
+</div>
+
+<script src="three.js"></script>
+<script src="OBJLoader.js"></script>
+<script src="OrbitControls.js"></script>
+<script src="../bvh.js"></script>
+
+<script>
+'use strict';
+
+var container;
+
+var camera, scene, renderer, controls;
+var windowHalfX = window.innerWidth / 2;
+var windowHalfY = window.innerHeight / 2;
+
+var bvh; // keeps the bvh data structure, build from the model
+var triCount = 0;
+
+init();
+animate();
+
+
+function init() {
+
+    container = document.createElement( 'div' );
+    document.body.appendChild( container );
+
+    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+    camera.position.z = 300;
+    //camera.position.z = 8;
+
+    controls = new THREE.OrbitControls( camera );
+
+    // scene
+    scene = new THREE.Scene();
+
+    var ambient = new THREE.AmbientLight( 0x101030 );
+    scene.add( ambient );
+
+    var directionalLight = new THREE.DirectionalLight( 0xffeedd );
+    directionalLight.position.set( 0, 0, 1 );
+    scene.add( directionalLight );
+
+    var manager = new THREE.LoadingManager();
+    manager.onProgress = function ( item, loaded, total ) {
+
+        console.log( item, loaded, total );
+
+    };
+
+    var onProgress = function ( xhr ) {
+        if ( xhr.lengthComputable ) {
+            var percentComplete = xhr.loaded / xhr.total * 100;
+            console.log( Math.round(percentComplete, 2) + '% downloaded' );
+        }
+    };
+
+    var onError = function ( xhr ) {
+    };
+
+    var loader = new THREE.OBJLoader( manager );
+    loader.load( 'male02_flat.obj', function ( object ) {
+
+        object.traverse( function ( child ) {
+
+            if ( child instanceof THREE.Mesh ) {
+
+                buildBVH(child);
+                child.geometry.computeVertexNormals();
+            }
+
+        } );
+
+        scene.add( object );
+
+    }, onProgress, onError );
+
+    //
+
+    renderer = new THREE.WebGLRenderer();
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    container.appendChild( renderer.domElement );
+
+    document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+    //
+
+    window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+    windowHalfX = window.innerWidth / 2;
+    windowHalfY = window.innerHeight / 2;
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function onDocumentMouseMove( event ) {
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    render();
+
+}
+
+function render() {
+    renderer.render( scene, camera );
+
+}
+
+function buildBVH(threeMesh) {
+    bvh = new BVH(threeMesh.geometry.attributes.position.array, 30);
+
+    console.log("input triangles: ",threeMesh.geometry.attributes.position.array.length / 9);
+    drawBVHNodeExtents(bvh._rootNode);
+
+    console.log("triangles in bvh: ",triCount);
+}
+
+function drawBVHNodeExtents(bvhNode) {
+    var trianglesInNode = bvhNode._endIndex - bvhNode._startIndex;
+    triCount += trianglesInNode;
+
+    if (trianglesInNode !== 0) {
+        console.log("triangles in node: ", trianglesInNode);
+
+        // draw current node;
+        var width = bvhNode._extentsMax.x - bvhNode._extentsMin.x;
+        var height = bvhNode._extentsMax.y - bvhNode._extentsMin.y;
+        var depth = bvhNode._extentsMax.z - bvhNode._extentsMin.z;
+
+//    console.log("node: ",bvhNode);
+
+        var cube = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshBasicMaterial({wireframe: true, color: 'blue'}));
+        cube.position.x = (bvhNode._extentsMax.x + bvhNode._extentsMin.x) * 0.5;
+        cube.position.y = (bvhNode._extentsMax.y + bvhNode._extentsMin.y) * 0.5;
+        cube.position.z = (bvhNode._extentsMax.z + bvhNode._extentsMin.z) * 0.5;
+        scene.add(cube);
+    }
+
+    // recursively draw child nodes
+    if (bvhNode._node0 !== null) {
+        drawBVHNodeExtents(bvhNode._node0);
+    }
+
+    if (bvhNode._node1 !== null) {
+        drawBVHNodeExtents(bvhNode._node1);
+    }
+}
+
+</script>
+
+</body>
+</html>
