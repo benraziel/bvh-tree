@@ -216,7 +216,7 @@ BVH.prototype.splitNode = function(node) {
     var node0End = node0Start + node0Elements.length;
     var node1Start = node0End;
     var node1End = endIndex;
-    var currElement, pos;
+    var currElement;
 
     var helperPos = node._startIndex;
 
@@ -281,6 +281,7 @@ BVH.prototype.splitNode = function(node) {
 function BVHNode(extentsMin, extentsMax, startIndex, endIndex, level) {
     this._extentsMin = extentsMin;
     this._extentsMax = extentsMax;
+    this._boundingSphereRadius = BVHNode.calcBoundingSphereRadius(extentsMin, extentsMax);
     this._startIndex = startIndex;
     this._endIndex = endIndex;
     this._level = level;
@@ -307,4 +308,22 @@ BVHNode.prototype.centerZ = function() {
 BVHNode.prototype.clearShapes = function() {
     this._startIndex = -1;
     this._endIndex = -1;
+};
+
+BVHNode.calcBoundingSphereRadius = function(extentsMin, extentsMax) {
+    var centerX = (extentsMin.x + extentsMax.x) * 0.5;
+    var centerY = (extentsMin.y + extentsMax.y) * 0.5;
+    var centerZ = (extentsMin.z + extentsMax.z) * 0.5;
+
+    var extentsMinDistSqr =
+        (centerX - extentsMin.x) * (centerX - extentsMin.x) +
+        (centerY - extentsMin.y) * (centerY - extentsMin.y) +
+        (centerZ - extentsMin.z) * (centerZ - extentsMin.z);
+
+    var extentsMaxDistSqr =
+        (centerX - extentsMax.x) * (centerX - extentsMax.x) +
+        (centerY - extentsMax.y) * (centerY - extentsMax.y) +
+        (centerZ - extentsMax.z) * (centerZ - extentsMax.z);
+
+    return Math.sqrt(Math.max(extentsMinDistSqr, extentsMaxDistSqr));
 };
