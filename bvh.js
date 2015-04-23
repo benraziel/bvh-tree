@@ -107,9 +107,9 @@ BVH.prototype.splitNode = function(node) {
     var node0ZElements = [];
     var node1ZElements = [];
 
-    console.log("splitNode: node level is ",node._level);
-    console.log("splitNode: node extentsMin ",node._extentsMin);
-    console.log("splitNode: node extentsMax ",node._extentsMax);
+    //console.log("splitNode: node level is ",node._level);
+    //console.log("splitNode: node extentsMin ",node._extentsMin);
+    //console.log("splitNode: node extentsMax ",node._extentsMax);
 
     extentsCenterX = node.centerX();
     extentsCenterY = node.centerY();
@@ -148,7 +148,7 @@ BVH.prototype.splitNode = function(node) {
     var splitZFailed = (node0ZElements.length === 0) || (node1ZElements.length === 0);
 
     if (splitXFailed && splitYFailed && splitZFailed) {
-        console.log("splitNode: couldnt split node by any axis");
+        //console.log("splitNode: couldnt split node by any axis");
         return;
     }
 
@@ -185,39 +185,50 @@ BVH.prototype.splitNode = function(node) {
     var node1End = endIndex;
     var currElement, pos;
 
+    var helperPos = node._startIndex;
+
     for (i = 0; i < node0Elements.length; i++) {
         currElement = node0Elements[i];
-        this._bboxHelper[i*7] = this._bboxArray[currElement*7];
-        this._bboxHelper[i*7+1] = this._bboxArray[currElement*7+1];
-        this._bboxHelper[i*7+2] = this._bboxArray[currElement*7+2];
-        this._bboxHelper[i*7+3] = this._bboxArray[currElement*7+3];
-        this._bboxHelper[i*7+4] = this._bboxArray[currElement*7+4];
-        this._bboxHelper[i*7+5] = this._bboxArray[currElement*7+5];
-        this._bboxHelper[i*7+6] = this._bboxArray[currElement*7+6];
+        this._bboxHelper[helperPos*7] = this._bboxArray[currElement*7];
+        this._bboxHelper[helperPos*7+1] = this._bboxArray[currElement*7+1];
+        this._bboxHelper[helperPos*7+2] = this._bboxArray[currElement*7+2];
+        this._bboxHelper[helperPos*7+3] = this._bboxArray[currElement*7+3];
+        this._bboxHelper[helperPos*7+4] = this._bboxArray[currElement*7+4];
+        this._bboxHelper[helperPos*7+5] = this._bboxArray[currElement*7+5];
+        this._bboxHelper[helperPos*7+6] = this._bboxArray[currElement*7+6];
+        helperPos++;
     }
 
     for (i = 0; i < node1Elements.length; i++) {
         currElement = node1Elements[i];
-        pos = (i + node0End) * 7;
-
-        this._bboxHelper[pos] = this._bboxArray[currElement*7];
-        this._bboxHelper[pos+1] = this._bboxArray[currElement*7+1];
-        this._bboxHelper[pos+2] = this._bboxArray[currElement*7+2];
-        this._bboxHelper[pos+3] = this._bboxArray[currElement*7+3];
-        this._bboxHelper[pos+4] = this._bboxArray[currElement*7+4];
-        this._bboxHelper[pos+5] = this._bboxArray[currElement*7+5];
-        this._bboxHelper[pos+6] = this._bboxArray[currElement*7+6];
+        this._bboxHelper[helperPos*7] = this._bboxArray[currElement*7];
+        this._bboxHelper[helperPos*7+1] = this._bboxArray[currElement*7+1];
+        this._bboxHelper[helperPos*7+2] = this._bboxArray[currElement*7+2];
+        this._bboxHelper[helperPos*7+3] = this._bboxArray[currElement*7+3];
+        this._bboxHelper[helperPos*7+4] = this._bboxArray[currElement*7+4];
+        this._bboxHelper[helperPos*7+5] = this._bboxArray[currElement*7+5];
+        this._bboxHelper[helperPos*7+6] = this._bboxArray[currElement*7+6];
+        helperPos++;
     }
 
+    //console.log("SPLIT STATISTICS");
+    //console.log("startIndex: ",node._startIndex," endIndex: ",node._endIndex, " delta: ",node._endIndex - node._startIndex);
+    //console.log("helper index after iteration: ",helperPos);
+    //console.log("subArr length: ",(node0Elements.length + node1Elements.length));
+    //console.log("node0 start: ",node0Start, "node0 End: ",node0End);
+    //console.log("node1 start: ",node1Start, "node1 End: ",node1End);
+
     // copy results back to main array
-    var subArr = this._bboxHelper.subarray(0, (node0Elements.length + node1Elements.length) * 7);
-    this._bboxArray.set(subArr, node0Start);
+    var subArr = this._bboxHelper.subarray(node._startIndex * 7, node._endIndex * 7);
+    this._bboxArray.set(subArr, node._startIndex * 7);
 
     // create 2 new nodes for the node we just split, and add links to them from the parent node
     var node0Extents = this.calcExtents(node0Start, node0End);
     var node1Extents = this.calcExtents(node1Start, node1End);
+
     var node0 = new BVHNode(node0Extents[0], node0Extents[1], node0Start, node0End, node._level + 1);
     var node1 = new BVHNode(node1Extents[0], node1Extents[1], node1Start, node1End, node._level + 1);
+
     node._node0 = node0;
     node._node1 = node1;
     node.clearShapes();
