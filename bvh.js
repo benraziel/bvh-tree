@@ -4,7 +4,7 @@
 
 function BVH(trianglesArray, maxTrianglesPerNode) {
     this._trianglesArray = trianglesArray;
-    this._maxTrianglesPerNode = maxTrianglesPerNode;
+    this._maxTrianglesPerNode = maxTrianglesPerNode || 50;
     this._bboxArray = this.calcBoundingBoxes(trianglesArray);
 
     // clone a helper array
