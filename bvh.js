@@ -284,19 +284,19 @@ BVH.prototype.splitNode = function(node) {
 };
 
 BVH.intersectNode = function(rayOrigin, rayDirection, node) {
-    var minX = node._extentsMin.x - 1e6;
-    var minY = node._extentsMin.y - 1e6;
-    var minZ = node._extentsMin.z - 1e6;
-    var maxX = node._extentsMax.x + 1e6;
-    var maxY = node._extentsMax.y + 1e6;
-    var maxZ = node._extentsMax.z + 1e6;
+    var minX = node._extentsMin.x - 1e-6;
+    var minY = node._extentsMin.y - 1e-6;
+    var minZ = node._extentsMin.z - 1e-6;
+    var maxX = node._extentsMax.x + 1e-6;
+    var maxY = node._extentsMax.y + 1e-6;
+    var maxZ = node._extentsMax.z + 1e-6;
 
     var tmin,tmax,tymin,tymax,tzmin,tzmax;
 
     var invdirx = 1 / rayDirection.x;
     var invdiry = 1 / rayDirection.y;
     var invdirz = 1 / rayDirection.z;
-    
+
     if ( invdirx >= 0 ) {
 
         tmin = ( minX - rayOrigin.x ) * invdirx;

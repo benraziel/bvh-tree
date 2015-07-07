@@ -150,7 +150,7 @@ function render() {
 }
 
 function buildBVH(threeMesh) {
-    bvh = new BVH(threeMesh.geometry.attributes.position.array, 30);
+    bvh = new BVH(threeMesh.geometry.attributes.position.array, 7);
 
     console.log("input triangles: ",threeMesh.geometry.attributes.position.array.length / 9);
     drawBVHNodeExtents(bvh._rootNode);
@@ -163,7 +163,7 @@ function drawBVHNodeExtents(bvhNode) {
     triCount += trianglesInNode;
 
     if (trianglesInNode !== 0) {
-        console.log("triangles in node: ", trianglesInNode);
+        //console.log("triangles in node: ", trianglesInNode);
 
         // draw current node;
         var width = bvhNode._extentsMax.x - bvhNode._extentsMin.x;
