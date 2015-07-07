@@ -25,6 +25,39 @@ function BVH(trianglesArray, maxTrianglesPerNode) {
 }
 
 /**
+ * returns a list of all the triangles in the BVH which interected a specific node.
+ * We use the BVH node structure to first cull out nodes which do not intereset the ray.
+ * For rays that did intersect, we test intersection of the ray with each triangle
+ * @param rayOrigin origin position of the ray {x, y, z}
+ * @param rayDirection direction of the ray {x, y, z}
+ * @return {Array} an array of triangle indices (triangle positions in the input trianglesArray), which intersected the BVH
+ */
+BVH.prototype.intersectRay = function(rayOrigin, rayDirection) {
+    var nodesToIntersect = [this._rootNode];
+    var triangleIndices = [];
+
+    while (nodesToIntersect.length > 0) {
+        var node = nodesToIntersect.pop();
+
+        if (BVH.intersectNode(rayOrigin, rayDirection, node)) {
+            if (node._node0) {
+                nodesToIntersect.push(node._node0);
+            }
+
+            if (node._node1) {
+                nodesToIntersect.push(node._node1);
+            }
+
+            for (var i = node._startIndex; i < node._endIndex; i++) {
+                triangleIndices.push(this._bboxArray[i*7]);
+            }
+        }
+    }
+
+    return triangleIndices;
+};
+
+/**
  * Gets an array of triangle, and calculates the bounding box for each of them, and adds an index to the triangle's position in the array
  * Each bbox is saved as 7 values in a Float32Array: (position, minX, minY, minZ, maxX, maxY, maxZ)
  */
@@ -32,6 +65,8 @@ BVH.prototype.calcBoundingBoxes = function(trianglesArray) {
     var p0x, p0y, p0z;
     var p1x, p1y, p1z;
     var p2x, p2y, p2z;
+    var minX, minY, minZ;
+    var maxX, maxY, maxZ;
 
     var triangleCount = trianglesArray.length / 9;
     var bboxArray = new Float32Array(triangleCount * 7);
@@ -47,13 +82,14 @@ BVH.prototype.calcBoundingBoxes = function(trianglesArray) {
         p2y = trianglesArray[i*9+7];
         p2z = trianglesArray[i*9+8];
 
-        bboxArray[i*7] = i;
-        bboxArray[i*7+1] = Math.min(Math.min(p0x, p1x), p2x);
-        bboxArray[i*7+2] = Math.min(Math.min(p0y, p1y), p2y);
-        bboxArray[i*7+3] = Math.min(Math.min(p0z, p1z), p2z);
-        bboxArray[i*7+4] = Math.max(Math.max(p0x, p1x), p2x);
-        bboxArray[i*7+5] = Math.max(Math.max(p0y, p1y), p2y);
-        bboxArray[i*7+6] = Math.max(Math.max(p0z, p1z), p2z);
+        minX = Math.min(Math.min(p0x, p1x), p2x);
+        minY = Math.min(Math.min(p0y, p1y), p2y);
+        minZ = Math.min(Math.min(p0z, p1z), p2z);
+        maxX = Math.max(Math.max(p0x, p1x), p2x);
+        maxY = Math.max(Math.max(p0y, p1y), p2y);
+        maxZ = Math.max(Math.max(p0z, p1z), p2z);
+
+        BVH.setBox(bboxArray, i, i, minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     return bboxArray;
@@ -107,10 +143,6 @@ BVH.prototype.splitNode = function(node) {
     var node0ZElements = [];
     var node1ZElements = [];
 
-    //console.log("splitNode: node level is ",node._level);
-    //console.log("splitNode: node extentsMin ",node._extentsMin);
-    //console.log("splitNode: node extentsMax ",node._extentsMax);
-
     extentsCenterX = node.centerX();
     extentsCenterY = node.centerY();
     extentsCenterZ = node.centerZ();
@@ -148,7 +180,6 @@ BVH.prototype.splitNode = function(node) {
     var splitZFailed = (node0ZElements.length === 0) || (node1ZElements.length === 0);
 
     if (splitXFailed && splitYFailed && splitZFailed) {
-        //console.log("splitNode: couldnt split node by any axis");
         return;
     }
 
@@ -222,34 +253,15 @@ BVH.prototype.splitNode = function(node) {
 
     for (i = 0; i < node0Elements.length; i++) {
         currElement = node0Elements[i];
-        this._bboxHelper[helperPos*7] = this._bboxArray[currElement*7];
-        this._bboxHelper[helperPos*7+1] = this._bboxArray[currElement*7+1];
-        this._bboxHelper[helperPos*7+2] = this._bboxArray[currElement*7+2];
-        this._bboxHelper[helperPos*7+3] = this._bboxArray[currElement*7+3];
-        this._bboxHelper[helperPos*7+4] = this._bboxArray[currElement*7+4];
-        this._bboxHelper[helperPos*7+5] = this._bboxArray[currElement*7+5];
-        this._bboxHelper[helperPos*7+6] = this._bboxArray[currElement*7+6];
+        BVH.copyBox(this._bboxArray, currElement, this._bboxHelper, helperPos);
         helperPos++;
     }
 
     for (i = 0; i < node1Elements.length; i++) {
         currElement = node1Elements[i];
-        this._bboxHelper[helperPos*7] = this._bboxArray[currElement*7];
-        this._bboxHelper[helperPos*7+1] = this._bboxArray[currElement*7+1];
-        this._bboxHelper[helperPos*7+2] = this._bboxArray[currElement*7+2];
-        this._bboxHelper[helperPos*7+3] = this._bboxArray[currElement*7+3];
-        this._bboxHelper[helperPos*7+4] = this._bboxArray[currElement*7+4];
-        this._bboxHelper[helperPos*7+5] = this._bboxArray[currElement*7+5];
-        this._bboxHelper[helperPos*7+6] = this._bboxArray[currElement*7+6];
+        BVH.copyBox(this._bboxArray, currElement, this._bboxHelper, helperPos);
         helperPos++;
     }
-
-    //console.log("SPLIT STATISTICS");
-    //console.log("startIndex: ",node._startIndex," endIndex: ",node._endIndex, " delta: ",node._endIndex - node._startIndex);
-    //console.log("helper index after iteration: ",helperPos);
-    //console.log("subArr length: ",(node0Elements.length + node1Elements.length));
-    //console.log("node0 start: ",node0Start, "node0 End: ",node0End);
-    //console.log("node1 start: ",node1Start, "node1 End: ",node1End);
 
     // copy results back to main array
     var subArr = this._bboxHelper.subarray(node._startIndex * 7, node._endIndex * 7);
@@ -270,6 +282,116 @@ BVH.prototype.splitNode = function(node) {
     this._nodesToSplit.push(node0);
     this._nodesToSplit.push(node1);
 };
+
+BVH.intersectNode = function(rayOrigin, rayDirection, node) {
+    var minX = node._extentsMin.x - 1e6;
+    var minY = node._extentsMin.y - 1e6;
+    var minZ = node._extentsMin.z - 1e6;
+    var maxX = node._extentsMax.x + 1e6;
+    var maxY = node._extentsMax.y + 1e6;
+    var maxZ = node._extentsMax.z + 1e6;
+
+    var tmin,tmax,tymin,tymax,tzmin,tzmax;
+
+    var invdirx = 1 / rayDirection.x;
+    var invdiry = 1 / rayDirection.y;
+    var invdirz = 1 / rayDirection.z;
+    
+    if ( invdirx >= 0 ) {
+
+        tmin = ( minX - rayOrigin.x ) * invdirx;
+        tmax = ( maxX - rayOrigin.x ) * invdirx;
+
+    } else {
+
+        tmin = ( maxX - rayOrigin.x ) * invdirx;
+        tmax = ( minX - rayOrigin.x ) * invdirx;
+    }
+
+    if ( invdiry >= 0 ) {
+
+        tymin = ( minY - rayOrigin.y ) * invdiry;
+        tymax = ( maxY - rayOrigin.y ) * invdiry;
+
+    } else {
+
+        tymin = ( maxY - rayOrigin.y ) * invdiry;
+        tymax = ( minY - rayOrigin.y ) * invdiry;
+    }
+
+    if ( ( tmin > tymax ) || ( tymin > tmax ) ) {
+        return false;
+    }
+
+    // These lines also handle the case where tmin or tmax is NaN
+    // (result of 0 * Infinity). x !== x returns true if x is NaN
+
+    if ( tymin > tmin || tmin !== tmin ) {
+        tmin = tymin;
+    }
+
+    if ( tymax < tmax || tmax !== tmax ) {
+        tmax = tymax;
+    }
+
+    if ( invdirz >= 0 ) {
+        tzmin = ( minZ - rayOrigin.z ) * invdirz;
+        tzmax = ( maxZ - rayOrigin.z ) * invdirz;
+    } else {
+        tzmin = ( maxZ - rayOrigin.z ) * invdirz;
+        tzmax = ( minZ - rayOrigin.z ) * invdirz;
+    }
+
+    if ( ( tmin > tzmax ) || ( tzmin > tmax ) ) {
+        return false;
+    }
+
+    if ( tzmin > tmin || tmin !== tmin ) {
+        tmin = tzmin;
+    }
+
+    if ( tzmax < tmax || tmax !== tmax ) {
+        tmax = tzmax;
+    }
+
+    //return point closest to the ray (positive side)
+    if ( tmax < 0 ) {
+        return false;
+    }
+
+    return true;
+};
+
+BVH.setBox = function(bboxArray, pos, triangleId, minX, minY, minZ, maxX, maxY, maxZ) {
+    bboxArray[pos*7] = triangleId;
+    bboxArray[pos*7+1] = minX;
+    bboxArray[pos*7+2] = minY;
+    bboxArray[pos*7+3] = minZ;
+    bboxArray[pos*7+4] = maxX;
+    bboxArray[pos*7+5] = maxY;
+    bboxArray[pos*7+6] = maxZ;
+};
+
+BVH.copyBox = function(sourceArray, sourcePos, destArray, destPos) {
+    destArray[destPos*7] = sourceArray[sourcePos*7];
+    destArray[destPos*7+1] = sourceArray[sourcePos*7+1];
+    destArray[destPos*7+2] = sourceArray[sourcePos*7+2];
+    destArray[destPos*7+3] = sourceArray[sourcePos*7+3];
+    destArray[destPos*7+4] = sourceArray[sourcePos*7+4];
+    destArray[destPos*7+5] = sourceArray[sourcePos*7+5];
+    destArray[destPos*7+6] = sourceArray[sourcePos*7+6];
+};
+
+BVH.getBox = function(bboxArray, pos, outputBox) {
+    outputBox.triangleId = bboxArray[pos*7];
+    outputBox.minX = bboxArray[pos*7+1];
+    outputBox.minY = bboxArray[pos*7+2];
+    outputBox.minZ = bboxArray[pos*7+3];
+    outputBox.maxX = bboxArray[pos*7+4];
+    outputBox.maxY = bboxArray[pos*7+5];
+    outputBox.maxZ = bboxArray[pos*7+6];
+};
+
 
 /**
  * A node in the BVH structure
