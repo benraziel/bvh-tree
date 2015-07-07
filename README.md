@@ -3,4 +3,4 @@ bvh-js
 
 A Bounding Volume Hierarchy implementation using javascript
 
-WORK IN PROGRESS
+[demo](https://cdn.rawgit.com/benraziel/bvh-js/master/example/index.html)
