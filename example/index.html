@@ -73,8 +73,8 @@ function init() {
     window.addEventListener( 'mousemove', onMouseMove, false );
 
     camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-    camera.position.z = 300;
-    //camera.position.z = 8;
+    camera.position.z = -325;
+    camera.position.y = -75;
 
     controls = new THREE.OrbitControls( camera );
 
