@@ -41,6 +41,8 @@ body {
 var container;
 
 var camera, scene, renderer, controls;
+var modelObject;
+
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
@@ -50,11 +52,25 @@ var triCount = 0;
 init();
 animate();
 
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2(-10000, -10000);
+
+function onMouseMove( event ) {
+
+    // calculate mouse position in normalized device coordinates
+    // (-1 to +1) for both components
+
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+}
 
 function init() {
 
     container = document.createElement( 'div' );
     document.body.appendChild( container );
+
+    window.addEventListener( 'mousemove', onMouseMove, false );
 
     camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
     camera.position.z = 300;
@@ -68,9 +84,13 @@ function init() {
     var ambient = new THREE.AmbientLight( 0x101030 );
     scene.add( ambient );
 
-    var directionalLight = new THREE.DirectionalLight( 0xffeedd );
-    directionalLight.position.set( 0, 0, 1 );
-    scene.add( directionalLight );
+    var directionalLight0 = new THREE.DirectionalLight( 0xffeedd );
+    directionalLight0.position.set( 0, 0, 1 );
+    scene.add( directionalLight0 );
+
+    var directionalLight1 = new THREE.DirectionalLight( 0xffeedd );
+    directionalLight1.position.set( 0, 0, -1 );
+    scene.add( directionalLight1 );
 
     var manager = new THREE.LoadingManager();
     manager.onProgress = function ( item, loaded, total ) {
@@ -90,23 +110,20 @@ function init() {
     };
 
     var loader = new THREE.OBJLoader( manager );
-    loader.load( 'male02_flat.obj', function ( object ) {
-
+    loader.load( 'Armadillo_345k.obj', function ( object ) {
+        console.log("finished loading model from file");
         object.traverse( function ( child ) {
 
             if ( child instanceof THREE.Mesh ) {
 
                 buildBVH(child);
-
-                var triangleIndices = bvh.intersectRay({x: 0, y: 0, z: -1}, {x: 0, y: 1, z: 0});
-                console.log(triangleIndices);
-
                 child.geometry.computeVertexNormals();
             }
 
         } );
 
         scene.add( object );
+        modelObject = object;
 
     }, onProgress, onError );
 
@@ -140,8 +157,26 @@ function onDocumentMouseMove( event ) {
 function animate() {
 
     requestAnimationFrame( animate );
+    update();
     render();
 
+}
+
+function update() {
+    if (!bvh) {
+        return;
+    }
+
+    raycaster.setFromCamera(mouse, camera);
+
+    var start = new Date().getTime();
+
+    var triangleIndices = bvh.intersectRay(raycaster.ray.origin, raycaster.ray.direction, true);
+
+    if (triangleIndices.length > 0) {
+        console.log("intersection took: ",new Date().getTime() - start);
+        console.log(triangleIndices);
+    }
 }
 
 function render() {
@@ -153,7 +188,7 @@ function buildBVH(threeMesh) {
     bvh = new BVH(threeMesh.geometry.attributes.position.array, 7);
 
     console.log("input triangles: ",threeMesh.geometry.attributes.position.array.length / 9);
-    drawBVHNodeExtents(bvh._rootNode);
+    //drawBVHNodeExtents(bvh._rootNode);
 
     console.log("triangles in bvh: ",triCount);
 }

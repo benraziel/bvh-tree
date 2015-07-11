@@ -2,6 +2,97 @@
  * Bounding Volume Hierarchy data structure
  */
 
+/**
+ * A 3D Vector class. Based on three.js Vector3
+ */
+BVHVector3 = function ( x, y, z ) {
+    this.x = x || 0;
+    this.y = y || 0;
+    this.z = z || 0;
+
+};
+
+BVHVector3.prototype = {
+
+    constructor: BVHVector3,
+
+    copy: function ( v ) {
+
+        this.x = v.x;
+        this.y = v.y;
+        this.z = v.z;
+
+        return this;
+
+    },
+
+    set: function ( x, y, z ) {
+
+        this.x = x;
+        this.y = y;
+        this.z = z;
+
+        return this;
+    },
+
+    add: function ( v ) {
+
+        this.x += v.x;
+        this.y += v.y;
+        this.z += v.z;
+
+        return this;
+    },
+
+    multiplyScalar: function ( scalar ) {
+
+        this.x *= scalar;
+        this.y *= scalar;
+        this.z *= scalar;
+
+        return this;
+
+    },
+
+    subVectors: function ( a, b ) {
+
+        this.x = a.x - b.x;
+        this.y = a.y - b.y;
+        this.z = a.z - b.z;
+
+        return this;
+
+    },
+
+    dot: function ( v ) {
+
+        return this.x * v.x + this.y * v.y + this.z * v.z;
+
+    },
+
+    cross: function ( v ) {
+        var x = this.x, y = this.y, z = this.z;
+
+        this.x = y * v.z - z * v.y;
+        this.y = z * v.x - x * v.z;
+        this.z = x * v.y - y * v.x;
+
+        return this;
+    },
+
+    crossVectors: function ( a, b ) {
+
+        var ax = a.x, ay = a.y, az = a.z;
+        var bx = b.x, by = b.y, bz = b.z;
+
+        this.x = ay * bz - az * by;
+        this.y = az * bx - ax * bz;
+        this.z = ax * by - ay * bx;
+
+        return this;
+    }
+};
+
 function BVH(trianglesArray, maxTrianglesPerNode) {
     this._trianglesArray = trianglesArray;
     this._maxTrianglesPerNode = maxTrianglesPerNode || 50;
@@ -32,14 +123,17 @@ function BVH(trianglesArray, maxTrianglesPerNode) {
  * @param rayDirection direction of the ray {x, y, z}
  * @return {Array} an array of triangle indices (triangle positions in the input trianglesArray), which intersected the BVH
  */
-BVH.prototype.intersectRay = function(rayOrigin, rayDirection) {
+BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) {
     var nodesToIntersect = [this._rootNode];
-    var triangleIndices = [];
+    var trianglesInIntersectingNodes = []; // a list of nodes that intersect the ray (according to their bounding box)
+    var intersectingTriangles = [];
 
+    // go over the BVH tree, and extract the list of triangles that lie in nodes that intersect the ray.
+    // note: these triangles may not intersect the ray themselves
     while (nodesToIntersect.length > 0) {
         var node = nodesToIntersect.pop();
 
-        if (BVH.intersectNode(rayOrigin, rayDirection, node)) {
+        if (BVH.intersectNodeBox(rayOrigin, rayDirection, node)) {
             if (node._node0) {
                 nodesToIntersect.push(node._node0);
             }
@@ -49,12 +143,31 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection) {
             }
 
             for (var i = node._startIndex; i < node._endIndex; i++) {
-                triangleIndices.push(this._bboxArray[i*7]);
+                trianglesInIntersectingNodes.push(this._bboxArray[i*7]);
             }
         }
     }
 
-    return triangleIndices;
+    // go over the list of candidate triangles, and check each of them using ray triangle intersection
+    var a = new BVHVector3();
+    var b = new BVHVector3();
+    var c = new BVHVector3();
+    var rayOriginVec3 = new BVHVector3(rayOrigin.x, rayOrigin.y, rayOrigin.z);
+    var rayDirectionVec3 = new BVHVector3(rayDirection.x, rayDirection.y, rayDirection.z);
+
+    for (i = 0; i < trianglesInIntersectingNodes.length; i++) {
+        var triIndex = trianglesInIntersectingNodes[i];
+
+        a.set(this._trianglesArray[triIndex*9], this._trianglesArray[triIndex*9+1], this._trianglesArray[triIndex*9+2]);
+        b.set(this._trianglesArray[triIndex*9+3], this._trianglesArray[triIndex*9+4], this._trianglesArray[triIndex*9+5]);
+        c.set(this._trianglesArray[triIndex*9+6], this._trianglesArray[triIndex*9+7], this._trianglesArray[triIndex*9+8]);
+
+        if (BVH.intersectRayTriangle(a, b, c, rayOriginVec3, rayDirectionVec3, backfaceCulling)) {
+            intersectingTriangles.push(triIndex);
+        }
+    }
+
+    return intersectingTriangles;
 };
 
 /**
@@ -283,7 +396,7 @@ BVH.prototype.splitNode = function(node) {
     this._nodesToSplit.push(node1);
 };
 
-BVH.intersectNode = function(rayOrigin, rayDirection, node) {
+BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
     var minX = node._extentsMin.x - 1e-6;
     var minY = node._extentsMin.y - 1e-6;
     var minZ = node._extentsMin.z - 1e-6;
@@ -361,6 +474,80 @@ BVH.intersectNode = function(rayOrigin, rayDirection, node) {
 
     return true;
 };
+
+BVH.intersectRayTriangle = function () {
+    // Compute the offset origin, edges, and normal.
+    var diff = new BVHVector3();
+    var edge1 = new BVHVector3();
+    var edge2 = new BVHVector3();
+    var normal = new BVHVector3();
+
+    return function (a, b, c, rayOrigin, rayDirection, backfaceCulling) {
+
+        // from http://www.geometrictools.com/LibMathematics/Intersection/Wm5IntrRay3Triangle3.cpp
+
+        edge1.subVectors(b, a);
+        edge2.subVectors(c, a);
+        normal.crossVectors(edge1, edge2);
+
+        // Solve Q + t*D = b1*E1 + b2*E2 (Q = kDiff, D = ray direction,
+        // E1 = kEdge1, E2 = kEdge2, N = Cross(E1,E2)) by
+        //   |Dot(D,N)|*b1 = sign(Dot(D,N))*Dot(D,Cross(Q,E2))
+        //   |Dot(D,N)|*b2 = sign(Dot(D,N))*Dot(D,Cross(E1,Q))
+        //   |Dot(D,N)|*t = -sign(Dot(D,N))*Dot(Q,N)
+        var DdN = rayDirection.dot(normal);
+        var sign;
+
+        if (DdN > 0) {
+
+            if (backfaceCulling) return null;
+            sign = 1;
+
+        } else if (DdN < 0) {
+
+            sign = -1;
+            DdN = -DdN;
+
+        } else {
+
+            return null;
+
+        }
+
+        diff.subVectors(rayOrigin, a);
+        var DdQxE2 = sign * rayDirection.dot(edge2.crossVectors(diff, edge2));
+
+        // b1 < 0, no intersection
+        if (DdQxE2 < 0) {
+            return null;
+        }
+
+        var DdE1xQ = sign * rayDirection.dot(edge1.cross(diff));
+
+        // b2 < 0, no intersection
+        if (DdE1xQ < 0) {
+            return null;
+        }
+
+        // b1+b2 > 1, no intersection
+        if (DdQxE2 + DdE1xQ > DdN) {
+            return null;
+        }
+
+        // Line intersects triangle, check if ray does.
+        var QdN = -sign * diff.dot(normal);
+
+        // t < 0, no intersection
+        if (QdN < 0) {
+            return null;
+        }
+
+        // Ray intersects triangle.
+        var t = QdN / DdN;
+        var result = new THREE.Vector3();
+        return result.copy( rayDirection ).multiplyScalar( t ).add( rayOrigin );
+    };
+}();
 
 BVH.setBox = function(bboxArray, pos, triangleId, minX, minY, minZ, maxX, maxY, maxZ) {
     bboxArray[pos*7] = triangleId;
