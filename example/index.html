@@ -41,7 +41,10 @@ body {
 var container;
 
 var camera, scene, renderer, controls;
+
 var modelObject;
+var intersectingTriangles;
+var bvhNodeLines;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
@@ -163,6 +166,12 @@ function animate() {
 }
 
 function update() {
+    if (intersectingTriangles) {
+        scene.remove(intersectingTriangles);
+    }
+
+    intersectingTriangles = new THREE.Object3D();
+
     if (!bvh) {
         return;
     }
@@ -171,11 +180,33 @@ function update() {
 
     var start = new Date().getTime();
 
-    var triangleIndices = bvh.intersectRay(raycaster.ray.origin, raycaster.ray.direction, true);
+    var intersectResult = bvh.intersectRay(raycaster.ray.origin, raycaster.ray.direction, true);
 
-    if (triangleIndices.length > 0) {
+    if (intersectResult.length > 0) {
         console.log("intersection took: ",new Date().getTime() - start);
-        console.log(triangleIndices);
+        console.log(intersectResult);
+
+        intersectResult.forEach(function(triangle) {
+            var geometry = new THREE.Geometry();
+            var v1 = new THREE.Vector3(triangle.a.x, triangle.a.y, triangle.a.z);
+            var v2 = new THREE.Vector3(triangle.b.x, triangle.b.y, triangle.b.z);
+            var v3 = new THREE.Vector3(triangle.c.x, triangle.c.y, triangle.c.z);
+
+            geometry.vertices.push(v1);
+            geometry.vertices.push(v2);
+            geometry.vertices.push(v3);
+
+            geometry.faces.push(new THREE.Face3(0, 1, 2));
+
+            var redMat = new THREE.MeshBasicMaterial({color: 0xff0000, side: THREE.DoubleSide});
+            var triangle = new THREE.Mesh(geometry, redMat);
+            intersectingTriangles.add(triangle);
+        });
+
+        intersectingTriangles.frustumCulled = false;
+
+        console.log('intersectingTriangles ',intersectingTriangles);
+        scene.add(intersectingTriangles);
     }
 }
 
@@ -188,40 +219,70 @@ function buildBVH(threeMesh) {
     bvh = new BVH(threeMesh.geometry.attributes.position.array, 7);
 
     console.log("input triangles: ",threeMesh.geometry.attributes.position.array.length / 9);
-    //drawBVHNodeExtents(bvh._rootNode);
+    drawBVHNodeExtents(bvh._rootNode);
 
     console.log("triangles in bvh: ",triCount);
 }
 
-function drawBVHNodeExtents(bvhNode) {
-    var trianglesInNode = bvhNode._endIndex - bvhNode._startIndex;
-    triCount += trianglesInNode;
+function drawBVHNodeExtents(rootNode) {
+    var bvhNodeMat = new THREE.LineBasicMaterial({ color: 0x0000ff, transparent: true, opacity: 0.3});
+    bvhNodeLines = new THREE.Line(new THREE.Geometry(), bvhNodeMat, THREE.LinePieces);
+    bvhNodeLines.geometry.dynamic = true;
+    bvhNodeLines.frustumCulled = false;
 
-    if (trianglesInNode !== 0) {
-        //console.log("triangles in node: ", trianglesInNode);
+    var nodesToVisit = [];
+    nodesToVisit.push(rootNode);
 
-        // draw current node;
-        var width = bvhNode._extentsMax.x - bvhNode._extentsMin.x;
-        var height = bvhNode._extentsMax.y - bvhNode._extentsMin.y;
-        var depth = bvhNode._extentsMax.z - bvhNode._extentsMin.z;
+    while (nodesToVisit.length > 0) {
+        var bvhNode = nodesToVisit.pop();
 
-//    console.log("node: ",bvhNode);
+        var trianglesInNode = bvhNode._endIndex - bvhNode._startIndex;
+        triCount += trianglesInNode;
 
-        var cube = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshBasicMaterial({wireframe: true, color: 'blue'}));
-        cube.position.x = (bvhNode._extentsMax.x + bvhNode._extentsMin.x) * 0.5;
-        cube.position.y = (bvhNode._extentsMax.y + bvhNode._extentsMin.y) * 0.5;
-        cube.position.z = (bvhNode._extentsMax.z + bvhNode._extentsMin.z) * 0.5;
-        scene.add(cube);
+        if (trianglesInNode !== 0) {
+            //console.log("triangles in node: ", trianglesInNode);
+
+            var width = bvhNode._extentsMax.x - bvhNode._extentsMin.x;
+            var height = bvhNode._extentsMax.y - bvhNode._extentsMin.y;
+            var depth = bvhNode._extentsMax.z - bvhNode._extentsMin.z;
+
+            var v0 = new THREE.Vector3(bvhNode._extentsMin.x, bvhNode._extentsMin.y, bvhNode._extentsMin.z);
+            var v1 = new THREE.Vector3(bvhNode._extentsMin.x + width, bvhNode._extentsMin.y, bvhNode._extentsMin.z);
+            var v2 = new THREE.Vector3(bvhNode._extentsMin.x + width, bvhNode._extentsMin.y + height, bvhNode._extentsMin.z);
+            var v3 = new THREE.Vector3(bvhNode._extentsMin.x, bvhNode._extentsMin.y + height, bvhNode._extentsMin.z);
+
+            var v4 = new THREE.Vector3(bvhNode._extentsMin.x, bvhNode._extentsMin.y, bvhNode._extentsMax.z);
+            var v5 = new THREE.Vector3(bvhNode._extentsMin.x + width, bvhNode._extentsMin.y, bvhNode._extentsMax.z);
+            var v6 = new THREE.Vector3(bvhNode._extentsMin.x + width, bvhNode._extentsMin.y + height, bvhNode._extentsMax.z);
+            var v7 = new THREE.Vector3(bvhNode._extentsMin.x, bvhNode._extentsMin.y + height, bvhNode._extentsMax.z);
+
+            bvhNodeLines.geometry.vertices.push(v0, v1);
+            bvhNodeLines.geometry.vertices.push(v1, v2);
+            bvhNodeLines.geometry.vertices.push(v2, v3);
+            bvhNodeLines.geometry.vertices.push(v3, v0);
+
+            bvhNodeLines.geometry.vertices.push(v4, v5);
+            bvhNodeLines.geometry.vertices.push(v5, v6);
+            bvhNodeLines.geometry.vertices.push(v6, v7);
+            bvhNodeLines.geometry.vertices.push(v7, v4);
+
+            bvhNodeLines.geometry.vertices.push(v0, v4);
+            bvhNodeLines.geometry.vertices.push(v1, v5);
+            bvhNodeLines.geometry.vertices.push(v2, v6);
+            bvhNodeLines.geometry.vertices.push(v3, v7);
+        }
+
+        // recursively draw child nodes
+        if (bvhNode._node0 !== null) {
+            nodesToVisit.push(bvhNode._node0);
+        }
+
+        if (bvhNode._node1 !== null) {
+            nodesToVisit.push(bvhNode._node1);
+        }
     }
 
-    // recursively draw child nodes
-    if (bvhNode._node0 !== null) {
-        drawBVHNodeExtents(bvhNode._node0);
-    }
-
-    if (bvhNode._node1 !== null) {
-        drawBVHNodeExtents(bvhNode._node1);
-    }
+    scene.add(bvhNodeLines);
 }
 
 </script>
