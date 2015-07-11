@@ -90,6 +90,11 @@ BVHVector3.prototype = {
         this.z = ax * by - ay * bx;
 
         return this;
+    },
+
+    clone: function () {
+
+        return new THREE.Vector3( this.x, this.y, this.z );
     }
 };
 
@@ -163,7 +168,7 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) 
         c.set(this._trianglesArray[triIndex*9+6], this._trianglesArray[triIndex*9+7], this._trianglesArray[triIndex*9+8]);
 
         if (BVH.intersectRayTriangle(a, b, c, rayOriginVec3, rayDirectionVec3, backfaceCulling)) {
-            intersectingTriangles.push(triIndex);
+            intersectingTriangles.push({'a': a.clone(), 'b': b.clone(), 'c': c.clone()});
         }
     }
 
