@@ -75,4 +75,17 @@ describe("bvhTests", function() {
         expect(intersectionResult[0].triangleIndex).toEqual(1);
         expect(JSON.stringify(intersectionResult[0].intersectionPoint)).toEqual(JSON.stringify({x: 1500, y: 3, z: 0}));
     });
+
+    it("a ray should not intersect a back-facing triangle if backface culling is enabled", function() {
+        var backfaceTriangle = [{x: 0.0, y: 0.0, z: 0.0}, {x: 2000.0, y: 1000.0, z: 0.0}, {x:2000.0, y:0.0, z:0.0}];
+        var rayOrigin = {x: 1500.0, y: 3.0, z:1000};
+        var rayDirection = {x: 0, y:0, z:-1};
+
+        var bvh = new BVH([backfaceTriangle], 5);
+        var intersectionCullingOn = bvh.intersectRay(rayOrigin, rayDirection, true);
+        var intersectionCullingOff = bvh.intersectRay(rayOrigin, rayDirection, false);
+
+        expect(intersectionCullingOn.length).toEqual(0);
+        expect(intersectionCullingOff.length).toEqual(1);
+    });
 });
