@@ -12,8 +12,17 @@ Allows fast intersection of a ray with a triangle mesh.
 
 ### Construct a BVH from a list of triangles
 ```js
-var triangle0 = [{x: 0.0, y: 0.0, z: 0.0}, {x: 0.0, y: 0.0, z: 100.0}, {x: 0.0, y: 100.0, z: 100.0}];
-var triangle1 = [{x: 0.0, y: 0.0, z: 0.0}, {x: 0.0, y: 0.0, z: -100.0}, {x: 0.0, y: -100.0, z: -100.0}];
+var triangle0 = [
+  {x: 0.0, y: 0.0, z: 0.0}, 
+  {x: 0.0, y: 0.0, z: 100.0}, 
+  {x: 0.0, y: 100.0, z: 100.0}
+];
+
+var triangle1 = [
+  {x: 0.0, y: 0.0, z: 0.0}, 
+  {x: 0.0, y: 0.0, z: -100.0}, 
+  {x: 0.0, y: -100.0, z: -100.0}
+];
 
 // the maximum number of triangles that can fit in a node before splitting it.
 var maxTrianglesPerNode = 7; 
