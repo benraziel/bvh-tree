@@ -1,5 +1,9 @@
 /**
- * Bounding Volume Hierarchy data structure
+ * bvh-tree
+ * A Bounding Volume Hierarchy data structure implementation.
+ * https://github.com/benraziel/bvh-tree
+ *
+ * @author Ben Raziel
  */
 
 /**
@@ -97,6 +101,21 @@ BVHVector3.prototype = {
     }
 };
 
+/**
+ * @typedef {Object} Point A Point in 3D space
+ * @property {number} x x coordinate of the point
+ * @property {number} y y coordinate of the point
+ * @property {number} z z coordinate of the point
+ *
+ * @typedef Point[3] Triangle A triangle in 3D space
+ */
+
+/**
+ * Constructs a bounding volume heirarchy from a list of triangles
+ * @class
+ * @param {Triangle[]} triangles an array of triangles to index. Each triangle is represented as an array of 3 xyz coordinates: [{x: X0, y: Y0, z: Z0}, {x: X1, y: Y1, z: Z1}, {x: X2, y: Y2, z: Z2}]
+ * @param {number} [maxTrianglesPerNode=10] the maximum number of triangles in each node of the BVH tree. Once this value is reached, that node is split into two child nodes.
+ */
 function BVH(triangles, maxTrianglesPerNode) {
     var trianglesArray = [];
     trianglesArray.length = triangles.length * 9;
@@ -121,7 +140,7 @@ function BVH(triangles, maxTrianglesPerNode) {
 
 
     this._trianglesArray = trianglesArray;
-    this._maxTrianglesPerNode = maxTrianglesPerNode || 50;
+    this._maxTrianglesPerNode = maxTrianglesPerNode || 10;
     this._bboxArray = this.calcBoundingBoxes(trianglesArray);
 
     // clone a helper array
@@ -145,9 +164,14 @@ function BVH(triangles, maxTrianglesPerNode) {
  * returns a list of all the triangles in the BVH which interected a specific node.
  * We use the BVH node structure to first cull out nodes which do not intereset the ray.
  * For rays that did intersect, we test intersection of the ray with each triangle
- * @param rayOrigin origin position of the ray {x, y, z}
- * @param rayDirection direction of the ray {x, y, z}
- * @return {Array} an array of triangle indices (triangle positions in the input trianglesArray), which intersected the BVH
+ * @param {Point} rayOrigin the origin position of the ray.
+ * @param {Point} rayDirection the direction vector of the ray.
+ * @return IntersectionResult[] an array of intersection result, one for each triangle which intersected the BVH
+ *
+ * @typedef {Object} IntersectionResult
+ * @property Array[] triangle the triangle which the ray intersected
+ * @property number triangleIndex the position of the interescting triangle in the input triangle array provided to the BVH constructor.
+ * @property {Point} intersectionPoint the interesection point of the ray on the triangle.
  */
 BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) {
     var nodesToIntersect = [this._rootNode];
@@ -614,15 +638,16 @@ BVH.getBox = function(bboxArray, pos, outputBox) {
 
 /**
  * A node in the BVH structure
- * @param extentsMin the min coords of this node's bounding box ({x,y,z})
- * @param extentsMax the max coords of this node's bounding box ({x,y,z})
- * @param startIndex an index in the bbox array, where the first element of this node is located
- * @param endIndex an index in the bbox array, where the last of this node is located, plus 1 (meaning that its non-inclusive).
+ * @class
+ * @param {Point} extentsMin the min coords of this node's bounding box ({x,y,z})
+ * @param {Point} extentsMax the max coords of this node's bounding box ({x,y,z})
+ * @param {number} startIndex an index in the bbox array, where the first element of this node is located
+ * @param {number} endIndex an index in the bbox array, where the last of this node is located, plus 1 (meaning that its non-inclusive).
+ * @param {number} the distance of this node from the root for the bvh tree. root node has level=0, its children have level=1 etc.
  */
 function BVHNode(extentsMin, extentsMax, startIndex, endIndex, level) {
     this._extentsMin = extentsMin;
     this._extentsMax = extentsMax;
-    this._boundingSphereRadius = BVHNode.calcBoundingSphereRadius(extentsMin, extentsMax);
     this._startIndex = startIndex;
     this._endIndex = endIndex;
     this._level = level;
