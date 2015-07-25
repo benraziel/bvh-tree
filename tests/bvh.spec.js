@@ -10,6 +10,10 @@ describe("bvhTests", function() {
         [{x:-12.0, y: 22.0, z:-32.0}, {x: 42.0, y: -55.0, z:62.0}, {x: -78.0, y: 87.0, z:-92.0}]
     ];
 
+    var bigTriangle = [
+        [{x: 0.0, y: 0.0, z: 0.0}, {x: 1000.0, y: 0.0, z: 0.0}, {x:1000.0, y:1000.0, z:-0.0}]
+    ];
+
     it("Should allow constructing an empty tree", function () {
         var bvh = new BVH([], 10);
         expect(bvh._trianglesArray).toEqual([]);
