@@ -93,8 +93,7 @@ BVHVector3.prototype = {
     },
 
     clone: function () {
-
-        return new THREE.Vector3( this.x, this.y, this.z );
+        return new BVHVector3( this.x, this.y, this.z );
     }
 };
 
@@ -577,7 +576,7 @@ BVH.intersectRayTriangle = function () {
 
         // Ray intersects triangle.
         var t = QdN / DdN;
-        var result = new THREE.Vector3();
+        var result = new BVHVector3();
         return result.copy( rayDirection ).multiplyScalar( t ).add( rayOrigin );
     };
 }();

@@ -10,10 +10,6 @@ describe("bvhTests", function() {
         [{x:-12.0, y: 22.0, z:-32.0}, {x: 42.0, y: -55.0, z:62.0}, {x: -78.0, y: 87.0, z:-92.0}]
     ];
 
-    var bigTriangle = [
-        [{x: 0.0, y: 0.0, z: 0.0}, {x: 1000.0, y: 0.0, z: 0.0}, {x:1000.0, y:1000.0, z:-0.0}]
-    ];
-
     it("Should allow constructing an empty tree", function () {
         var bvh = new BVH([], 10);
         expect(bvh._trianglesArray).toEqual([]);
@@ -60,5 +56,23 @@ describe("bvhTests", function() {
         expect(bvh._rootNode._node0._extentsMax.x).toEqual(-1.0);
         expect(bvh._rootNode._node1._extentsMin.x).toEqual(1.0);
         expect(bvh._rootNode._node1._extentsMax.x).toEqual(5.0);
+    });
+
+    it("when a ray intersects a triangle, it should return the correct intersection results", function() {
+        var twoLargeTriangles = [
+            [{x: 0.0, y: 0.0, z: 0.0}, {x: 1000.0, y: 0.0, z: 0.0}, {x:1000.0, y:1000.0, z:0.0}],
+            [{x: 0.0, y: 0.0, z: 0.0}, {x: 2000.0, y: 0.0, z: 0.0}, {x:2000.0, y:1000.0, z:0.0}]
+        ];
+
+        var rayOrigin = {x: 1500.0, y: 3.0, z:1000};
+        var rayDirection = {x: 0, y:0, z:-1};
+
+        var bvh = new BVH(twoLargeTriangles, 5);
+        var intersectionResult = bvh.intersectRay(rayOrigin, rayDirection, false);
+
+        expect(intersectionResult.length).toEqual(1);
+        expect(JSON.stringify(intersectionResult[0].triangle)).toEqual(JSON.stringify(twoLargeTriangles[1]));
+        expect(intersectionResult[0].triangleIndex).toEqual(1);
+        expect(JSON.stringify(intersectionResult[0].intersectionPoint)).toEqual(JSON.stringify({x: 1500, y: 3, z: 0}));
     });
 });
