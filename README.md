@@ -6,7 +6,7 @@ Enables fast intersection of rays with a triangle mesh.
 
 
 ## Demo 
-[ray-mesh intersection](https://cdn.rawgit.com/benraziel/bvh-js/master/example/index.html)
+[ray-mesh intersection](https://cdn.rawgit.com/benraziel/bvh-tree/master/demo/index.html)
 
 ## Usage
 
