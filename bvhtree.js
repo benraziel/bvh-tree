@@ -9,7 +9,7 @@
 /**
  * A 3D Vector class. Based on three.js Vector3
  */
-BVHVector3 = function ( x, y, z ) {
+var BVHVector3 = function ( x, y, z ) {
     this.x = x || 0;
     this.y = y || 0;
     this.z = z || 0;
@@ -205,7 +205,7 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) 
     var rayOriginVec3 = new BVHVector3(rayOrigin.x, rayOrigin.y, rayOrigin.z);
     var rayDirectionVec3 = new BVHVector3(rayDirection.x, rayDirection.y, rayDirection.z);
 
-    for (i = 0; i < trianglesInIntersectingNodes.length; i++) {
+    for (var i = 0; i < trianglesInIntersectingNodes.length; i++) {
         var triIndex = trianglesInIntersectingNodes[i];
 
         a.set(this._trianglesArray[triIndex*9], this._trianglesArray[triIndex*9+1], this._trianglesArray[triIndex*9+2]);
@@ -271,7 +271,7 @@ BVH.prototype.calcBoundingBoxes = function(trianglesArray) {
  */
 BVH.prototype.calcExtents = function(startIndex, endIndex) {
     if (startIndex >= endIndex) {
-        return [{'x': 0, 'y': 0, 'z': 0}, {'x': 0, 'y': 0, 'z': 0}]
+        return [{'x': 0, 'y': 0, 'z': 0}, {'x': 0, 'y': 0, 'z': 0}];
     }
 
     var minX = Number.MAX_VALUE;
@@ -354,6 +354,9 @@ BVH.prototype.splitNode = function(node) {
 
     // in case one of the splits failed, choose to split by the axis which resulted in the most balanced split of shapes between the two child nodes
     var defaultAxisFailed = false;
+    var node0Elements;
+    var node1Elements;
+
     if ((node._level % 3 === 0)) {
         if (splitXFailed) {
             defaultAxisFailed = true;
@@ -385,8 +388,8 @@ BVH.prototype.splitNode = function(node) {
     }
 
     if (defaultAxisFailed) {
-        var node0Elements = [];
-        var node1Elements = [];
+        node0Elements = [];
+        node1Elements = [];
         var xImbalance = Math.abs(node0XElements.length - node1XElements.length);
         var yImbalance = Math.abs(node0YElements.length - node1YElements.length);
         var zImbalance = Math.abs(node0ZElements.length - node1ZElements.length);
@@ -531,7 +534,7 @@ BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
     return true;
 };
 
-BVH.intersectRayTriangle = function () {
+(BVH.intersectRayTriangle = function () {
     // Compute the offset origin, edges, and normal.
     var diff = new BVHVector3();
     var edge1 = new BVHVector3();
@@ -556,7 +559,10 @@ BVH.intersectRayTriangle = function () {
 
         if (DdN > 0) {
 
-            if (backfaceCulling) return null;
+            if (backfaceCulling) {
+                return null;
+            }
+
             sign = 1;
 
         } else if (DdN < 0) {
@@ -603,7 +609,7 @@ BVH.intersectRayTriangle = function () {
         var result = new BVHVector3();
         return result.copy( rayDirection ).multiplyScalar( t ).add( rayOrigin );
     };
-}();
+}());
 
 BVH.setBox = function(bboxArray, pos, triangleId, minX, minY, minZ, maxX, maxY, maxZ) {
     bboxArray[pos*7] = triangleId;
