@@ -1,16 +1,4 @@
-engines:
-  rubocop:
-    enabled: true
-  golint:
-    enabled: true
-  gofmt:
-    enabled: true
-  eslint:
-    enabled: true
-  csslint:
-    enabled: true
-ratings:
-   paths:
-   - **/*
+languages:
+  JavaScript: true
 exclude_paths:
-- demo/**/*
+- "demo/**/*"
