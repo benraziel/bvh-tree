@@ -98,7 +98,29 @@ BVHVector3.prototype = {
     }
 };
 
-function BVH(trianglesArray, maxTrianglesPerNode) {
+function BVH(triangles, maxTrianglesPerNode) {
+    var trianglesArray = [];
+    trianglesArray.length = triangles.length * 9;
+
+    for (var i = 0; i < triangles.length; i++) {
+        var p0 = triangles[i][0];
+        var p1 = triangles[i][1];
+        var p2 = triangles[i][2];
+
+        trianglesArray[i*9] = p0.x;
+        trianglesArray[i*9+1] = p0.y;
+        trianglesArray[i*9+2] = p0.z;
+
+        trianglesArray[i*9+3] = p1.x;
+        trianglesArray[i*9+4] = p1.y;
+        trianglesArray[i*9+5] = p1.z;
+
+        trianglesArray[i*9+6] = p2.x;
+        trianglesArray[i*9+7] = p2.y;
+        trianglesArray[i*9+8] = p2.z;
+    }
+
+
     this._trianglesArray = trianglesArray;
     this._maxTrianglesPerNode = maxTrianglesPerNode || 50;
     this._bboxArray = this.calcBoundingBoxes(trianglesArray);
@@ -167,8 +189,14 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) 
         b.set(this._trianglesArray[triIndex*9+3], this._trianglesArray[triIndex*9+4], this._trianglesArray[triIndex*9+5]);
         c.set(this._trianglesArray[triIndex*9+6], this._trianglesArray[triIndex*9+7], this._trianglesArray[triIndex*9+8]);
 
-        if (BVH.intersectRayTriangle(a, b, c, rayOriginVec3, rayDirectionVec3, backfaceCulling)) {
-            intersectingTriangles.push({'a': a.clone(), 'b': b.clone(), 'c': c.clone()});
+        var intersectionPoint = BVH.intersectRayTriangle(a, b, c, rayOriginVec3, rayDirectionVec3, backfaceCulling);
+
+        if (intersectionPoint) {
+            intersectingTriangles.push({
+                triangle: [a.clone(), b.clone(), c.clone()],
+                triangleIndex: triIndex,
+                intersectionPoint: intersectionPoint
+            });
         }
     }
 

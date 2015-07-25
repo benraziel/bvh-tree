@@ -38,12 +38,14 @@ body {
 <script>
 'use strict';
 
-var container;
+var RAY_COUNT = 40;
 
+var container;
 var camera, scene, renderer, controls;
 
 var modelObject;
 var intersectingTriangles;
+var rayLines;
 var bvhNodeLines;
 
 var windowHalfX = window.innerWidth / 2;
@@ -51,6 +53,19 @@ var windowHalfY = window.innerHeight / 2;
 
 var bvh; // keeps the bvh data structure, build from the model
 var triCount = 0;
+
+var hexColors = [
+    0xFF1493,
+    0xB23AEE,
+    0x1E90FF,
+    0x00F5FF,
+    0x00FF7F,
+    0x7FFF00,
+    0xCDCD00,
+    0xFFA500
+];
+
+var randomValues = [];
 
 init();
 animate();
@@ -94,6 +109,10 @@ function init() {
     var directionalLight1 = new THREE.DirectionalLight( 0xffeedd );
     directionalLight1.position.set( 0, 0, -1 );
     scene.add( directionalLight1 );
+
+    for (var i = 0; i < 5000; i++) {
+        randomValues.push(Math.random());
+    }
 
     var manager = new THREE.LoadingManager();
     manager.onProgress = function ( item, loaded, total ) {
@@ -168,46 +187,58 @@ function animate() {
 function update() {
     if (intersectingTriangles) {
         scene.remove(intersectingTriangles);
+        scene.remove(rayLines);
     }
 
     intersectingTriangles = new THREE.Object3D();
+    rayLines = new THREE.Object3D();
 
     if (!bvh) {
         return;
     }
 
-    raycaster.setFromCamera(mouse, camera);
-
     var start = new Date().getTime();
 
-    var intersectResult = bvh.intersectRay(raycaster.ray.origin, raycaster.ray.direction, true);
+    for (var i = 0; i < RAY_COUNT; i++) {
+        var rayOrigin = mouse.clone();
+        raycaster.setFromCamera(rayOrigin, camera);
 
-    if (intersectResult.length > 0) {
-        console.log("intersection took: ",new Date().getTime() - start);
-        console.log(intersectResult);
+        raycaster.ray.origin.x += (randomValues[(i*6) % randomValues.length] - 0.5) * 10;
+        raycaster.ray.origin.y += (randomValues[(i*6+1) % randomValues.length] - 0.5) * 10;
+        raycaster.ray.origin.z += (randomValues[(i*6+2) % randomValues.length] - 0.5) * 10;
+        raycaster.ray.direction.x += (randomValues[(i*6+3) % randomValues.length] - 0.5) * 0.01;
+        raycaster.ray.direction.y += (randomValues[(i*6+4) % randomValues.length] - 0.5) * 0.01;
+        raycaster.ray.direction.z += (randomValues[(i*6+5) % randomValues.length] - 0.5) * 0.01;
+        raycaster.ray.direction.normalize();
 
-        intersectResult.forEach(function(triangle) {
-            var geometry = new THREE.Geometry();
-            var v1 = new THREE.Vector3(triangle.a.x, triangle.a.y, triangle.a.z);
-            var v2 = new THREE.Vector3(triangle.b.x, triangle.b.y, triangle.b.z);
-            var v3 = new THREE.Vector3(triangle.c.x, triangle.c.y, triangle.c.z);
+        var rayColor = hexColors[i % hexColors.length];
 
-            geometry.vertices.push(v1);
-            geometry.vertices.push(v2);
-            geometry.vertices.push(v3);
+        var intersectResult = bvh.intersectRay(raycaster.ray.origin, raycaster.ray.direction, true);
+        if (intersectResult.length > 0) {
+            //console.log("intersection took: ",new Date().getTime() - start);
+            //console.log(intersectResult);
 
-            geometry.faces.push(new THREE.Face3(0, 1, 2));
+            intersectResult.forEach(function (intersection) {
+                var triangle = intersection.triangle;
+                var geometry = new THREE.Geometry();
 
-            var redMat = new THREE.MeshBasicMaterial({color: 0xff0000, side: THREE.DoubleSide});
-            var triangle = new THREE.Mesh(geometry, redMat);
-            intersectingTriangles.add(triangle);
-        });
+                geometry.vertices.push(triangle[0]);
+                geometry.vertices.push(triangle[1]);
+                geometry.vertices.push(triangle[2]);
 
-        intersectingTriangles.frustumCulled = false;
+                geometry.faces.push(new THREE.Face3(0, 1, 2));
 
-        console.log('intersectingTriangles ',intersectingTriangles);
-        scene.add(intersectingTriangles);
+                var redMat = new THREE.MeshBasicMaterial({color: rayColor, side: THREE.DoubleSide});
+                var triangle = new THREE.Mesh(geometry, redMat);
+                intersectingTriangles.add(triangle);
+            });
+        }
     }
+
+    console.log("intersections took: ",new Date().getTime() - start);
+
+    intersectingTriangles.frustumCulled = false;
+    scene.add(intersectingTriangles);
 }
 
 function render() {
@@ -216,7 +247,20 @@ function render() {
 }
 
 function buildBVH(threeMesh) {
-    bvh = new BVH(threeMesh.geometry.attributes.position.array, 7);
+    var vertexArr = threeMesh.geometry.attributes.position.array;
+    var triangleCount = vertexArr.length / 9;
+    var triangles = [];
+    triangles.length = triangleCount;
+
+    for (var i = 0; i < triangleCount; i++) {
+        triangles[i] = [
+            {x: vertexArr[i*9], y: vertexArr[i*9+1], z: vertexArr[i*9+2]},
+            {x: vertexArr[i*9+3], y: vertexArr[i*9+4], z: vertexArr[i*9+5]},
+            {x: vertexArr[i*9+6], y: vertexArr[i*9+7], z: vertexArr[i*9+8]}
+        ]
+    }
+
+    bvh = new BVH(triangles, 7);
 
     console.log("input triangles: ",threeMesh.geometry.attributes.position.array.length / 9);
     drawBVHNodeExtents(bvh._rootNode);
