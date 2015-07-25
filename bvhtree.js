@@ -39,6 +39,12 @@ BVHVector3.prototype = {
         return this;
     },
 
+    setFromArray: function(array, firstElementPos) {
+        this.x = array[firstElementPos];
+        this.y = array[firstElementPos+1];
+        this.z = array[firstElementPos+2];
+    },
+
     add: function ( v ) {
 
         this.x += v.x;
@@ -205,12 +211,12 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) 
     var rayOriginVec3 = new BVHVector3(rayOrigin.x, rayOrigin.y, rayOrigin.z);
     var rayDirectionVec3 = new BVHVector3(rayDirection.x, rayDirection.y, rayDirection.z);
 
-    for (var i = 0; i < trianglesInIntersectingNodes.length; i++) {
+    for (i = 0; i < trianglesInIntersectingNodes.length; i++) {
         var triIndex = trianglesInIntersectingNodes[i];
 
-        a.set(this._trianglesArray[triIndex*9], this._trianglesArray[triIndex*9+1], this._trianglesArray[triIndex*9+2]);
-        b.set(this._trianglesArray[triIndex*9+3], this._trianglesArray[triIndex*9+4], this._trianglesArray[triIndex*9+5]);
-        c.set(this._trianglesArray[triIndex*9+6], this._trianglesArray[triIndex*9+7], this._trianglesArray[triIndex*9+8]);
+        a.setFromArray(this._trianglesArray, triIndex*9);
+        b.setFromArray(this._trianglesArray, triIndex*9+3);
+        c.setFromArray(this._trianglesArray, triIndex*9+6);
 
         var intersectionPoint = BVH.intersectRayTriangle(a, b, c, rayOriginVec3, rayDirectionVec3, backfaceCulling);
 
@@ -422,15 +428,10 @@ BVH.prototype.splitNode = function(node) {
     var currElement;
 
     var helperPos = node._startIndex;
+    var concatenatedElements = node0Elements.concat(node1Elements);
 
-    for (i = 0; i < node0Elements.length; i++) {
-        currElement = node0Elements[i];
-        BVH.copyBox(this._bboxArray, currElement, this._bboxHelper, helperPos);
-        helperPos++;
-    }
-
-    for (i = 0; i < node1Elements.length; i++) {
-        currElement = node1Elements[i];
+    for (i = 0; i < concatenatedElements.length; i++) {
+        currElement = concatenatedElements[i];
         BVH.copyBox(this._bboxArray, currElement, this._bboxHelper, helperPos);
         helperPos++;
     }
@@ -455,6 +456,21 @@ BVH.prototype.splitNode = function(node) {
     this._nodesToSplit.push(node1);
 };
 
+BVH._calcTValues = function(minVal, maxVal, rayOriginCoord, invdir) {
+    var res = {min: 0, max: 0};
+
+    if ( invdir >= 0 ) {
+        res.min = ( minVal - rayOriginCoord ) * invdir;
+        res.max = ( maxVal - rayOriginCoord ) * invdir;
+
+    } else {
+        res.min = ( maxVal - rayOriginCoord ) * invdir;
+        res.max = ( minVal - rayOriginCoord ) * invdir;
+    }
+
+    return res;
+};
+
 BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
     var minX = node._extentsMin.x - 1e-6;
     var minY = node._extentsMin.y - 1e-6;
@@ -463,78 +479,50 @@ BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
     var maxY = node._extentsMax.y + 1e-6;
     var maxZ = node._extentsMax.z + 1e-6;
 
-    var tmin,tmax,tymin,tymax,tzmin,tzmax;
-
     var invdirx = 1 / rayDirection.x;
     var invdiry = 1 / rayDirection.y;
     var invdirz = 1 / rayDirection.z;
 
-    if ( invdirx >= 0 ) {
+    var t = BVH._calcTValues(minX, maxX, rayOrigin.x, invdirx);
+    var ty = BVH._calcTValues(minY, maxY, rayOrigin.y, invdiry);
 
-        tmin = ( minX - rayOrigin.x ) * invdirx;
-        tmax = ( maxX - rayOrigin.x ) * invdirx;
-
-    } else {
-
-        tmin = ( maxX - rayOrigin.x ) * invdirx;
-        tmax = ( minX - rayOrigin.x ) * invdirx;
-    }
-
-    if ( invdiry >= 0 ) {
-
-        tymin = ( minY - rayOrigin.y ) * invdiry;
-        tymax = ( maxY - rayOrigin.y ) * invdiry;
-
-    } else {
-
-        tymin = ( maxY - rayOrigin.y ) * invdiry;
-        tymax = ( minY - rayOrigin.y ) * invdiry;
-    }
-
-    if ( ( tmin > tymax ) || ( tymin > tmax ) ) {
+    if ( ( t.min > ty.max ) || ( ty.min > t.max ) ) {
         return false;
     }
 
     // These lines also handle the case where tmin or tmax is NaN
     // (result of 0 * Infinity). x !== x returns true if x is NaN
-
-    if ( tymin > tmin || tmin !== tmin ) {
-        tmin = tymin;
+    if ( ty.min > t.min || t.min !== t.min ) {
+        t.min = ty.min;
     }
 
-    if ( tymax < tmax || tmax !== tmax ) {
-        tmax = tymax;
+    if ( ty.max < t.max || t.max !== t.max ) {
+        t.max = ty.max;
     }
 
-    if ( invdirz >= 0 ) {
-        tzmin = ( minZ - rayOrigin.z ) * invdirz;
-        tzmax = ( maxZ - rayOrigin.z ) * invdirz;
-    } else {
-        tzmin = ( maxZ - rayOrigin.z ) * invdirz;
-        tzmax = ( minZ - rayOrigin.z ) * invdirz;
-    }
+    var tz = BVH._calcTValues(minZ, maxZ, rayOrigin.z, invdirz);
 
-    if ( ( tmin > tzmax ) || ( tzmin > tmax ) ) {
+    if ( ( t.min > tz.max ) || ( tz.min > t.max ) ) {
         return false;
     }
 
-    if ( tzmin > tmin || tmin !== tmin ) {
-        tmin = tzmin;
+    if ( tz.min > t.min || t.min !== t.min ) {
+        t.min = tz.min;
     }
 
-    if ( tzmax < tmax || tmax !== tmax ) {
-        tmax = tzmax;
+    if ( tz.max < t.max || t.max !== t.max ) {
+        t.max = tz.max;
     }
 
     //return point closest to the ray (positive side)
-    if ( tmax < 0 ) {
+    if (t.max < 0 ) {
         return false;
     }
 
     return true;
 };
 
-(BVH.intersectRayTriangle = function () {
+BVH.intersectRayTriangle = (function () {
     // Compute the offset origin, edges, and normal.
     var diff = new BVHVector3();
     var edge1 = new BVHVector3();
@@ -549,7 +537,7 @@ BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
         edge2.subVectors(c, a);
         normal.crossVectors(edge1, edge2);
 
-        // Solve Q + t*D = b1*E1 + b2*E2 (Q = kDiff, D = ray direction,
+        // Solve Q + t*D = b1*E1 + bL*E2 (Q = kDiff, D = ray direction,
         // E1 = kEdge1, E2 = kEdge2, N = Cross(E1,E2)) by
         //   |Dot(D,N)|*b1 = sign(Dot(D,N))*Dot(D,Cross(Q,E2))
         //   |Dot(D,N)|*b2 = sign(Dot(D,N))*Dot(D,Cross(E1,Q))
