@@ -1,8 +1,8 @@
-bvh-js
+bvh-tree
 ======
 
-A Bounding Volume Hierarchy data structure in javascript, for spatial indexing of large triangle meshes.
-Allows fast intersection of a ray with a triangle mesh.
+A Bounding Volume Hierarchy data structure written in javascript, for spatial indexing of large triangle meshes.
+Enables fast intersection of rays with a triangle mesh.
 
 
 ## Demo 
