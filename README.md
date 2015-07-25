@@ -48,3 +48,7 @@ var intersectionResult = bvh.intersectRay(rayOrigin, rayDirection, backfaceCulli
 - `triangle` the triangle which the ray intersected
 - `triangleIndex` the position of the interescting triangle in the input triangle array provided to the BVH constructor.
 - `intersectionPoint` the interesection point of the ray on the triangle.
+
+## License
+
+Copyright (c) 2015 Ben Raziel. MIT License
