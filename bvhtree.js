@@ -183,6 +183,7 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) 
     var nodesToIntersect = [this._rootNode];
     var trianglesInIntersectingNodes = []; // a list of nodes that intersect the ray (according to their bounding box)
     var intersectingTriangles = [];
+    var i;
 
     // go over the BVH tree, and extract the list of triangles that lie in nodes that intersect the ray.
     // note: these triangles may not intersect the ray themselves
@@ -198,7 +199,7 @@ BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceCulling) 
                 nodesToIntersect.push(node._node1);
             }
 
-            for (var i = node._startIndex; i < node._endIndex; i++) {
+            for (i = node._startIndex; i < node._endIndex; i++) {
                 trianglesInIntersectingNodes.push(this._bboxArray[i*7]);
             }
         }
