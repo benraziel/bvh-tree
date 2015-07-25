@@ -6,7 +6,7 @@ Enables fast intersection of rays with a triangle mesh.
 
 
 ## Demo 
-[ray-mesh intersection](https://cdn.rawgit.com/benraziel/bvh-js/master/example/index.html)
+[ray-mesh intersection](https://cdn.rawgit.com/benraziel/bvh-tree/master/demo/index.html)
 
 ## Usage
 
@@ -44,3 +44,11 @@ var backfaceCulling = true;
 
 var intersectionResult = bvh.intersectRay(rayOrigin, rayDirection, backfaceCulling);
 ```
+`intersectsRay()` returns an array of intersection result objects, one for each triangle that intersected the ray. Each object contains the following properties:
+- `triangle` the triangle which the ray intersected
+- `triangleIndex` the position of the interescting triangle in the input triangle array provided to the BVH constructor.
+- `intersectionPoint` the interesection point of the ray on the triangle.
+
+## License
+
+Copyright (c) 2015 Ben Raziel. MIT License
