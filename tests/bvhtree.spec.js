@@ -1,4 +1,4 @@
-describe("bvhTests", function() {
+describe("bvhtree", function() {
     var twoTrianglesX = [
         [{x: -5.0, y: 20.0, z: -30.0}, {x: -2.0, y: -50.0, z: 60.0}, {x:-1.0, y:80.0, z:-90.0}],
         [{x: 5.0, y: 21.0, z: -31.0}, {x: 2.0, y: -51.0, z: 61.0}, {x:1.0, y:81.0, z:-91.0}]
