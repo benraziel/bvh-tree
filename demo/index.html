@@ -4,30 +4,17 @@
 <title>bvh-tree demo</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-<style>
-body {
-    font-family: Monospace;
-    background-color: #000;
-    color: #fff;
-    margin: 0px;
-    overflow: hidden;
-}
-#info {
-    color: #fff;
-    position: absolute;
-    top: 10px;
-    width: 100%;
-    text-align: center;
-    z-index: 100;
-    display:block;
-}
-#info a, .button { color: #8abbff; font-weight: bold; text-decoration: underline; cursor: pointer }
-</style>
+<link rel="stylesheet" type="text/css" href="index.css">
 </head>
 
 <body>
 <div id="info">
     <b>bvh-tree</b> by <a href="https://twitter.com/benraziel" target="_blank">Ben Raziel</a> | <a href="https://github.com/benraziel/bvh-tree" target="_blank">github</a>
+</div>
+
+<div id="loading-wrapper">
+    <div class="loading"></div>
+    <div class="loading-text">Loading mesh&#8230;</div>
 </div>
 
 <script src="three.js"></script>
@@ -261,6 +248,9 @@ function buildBVH(threeMesh) {
     console.log("building bvh took ",new Date().getTime() - start, " ms");
 
     drawBVHNodeExtents(bvh._rootNode);
+
+    // hide loader animation
+    document.getElementById('loading-wrapper').style.display = 'none';
 }
 
 function drawBVHNodeExtents(rootNode) {
