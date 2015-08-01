@@ -243,7 +243,7 @@ function buildBVH(threeMesh) {
     }
 
     var start = new Date().getTime();
-    bvh = new BVH(triangles, 7);
+    bvh = new bvhtree.BVH(triangles, 7);
     console.log("input triangles: ",threeMesh.geometry.attributes.position.array.length / 9);
     console.log("building bvh took ",new Date().getTime() - start, " ms");
 

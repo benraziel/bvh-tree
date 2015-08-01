@@ -27,7 +27,7 @@ var triangle1 = [
 // the maximum number of triangles that can fit in a node before splitting it.
 var maxTrianglesPerNode = 7; 
 
-var bvh = new BVH([triangle0, triangle1], maxTrianglesPerNode);
+var bvh = new bvhtree.BVH([triangle0, triangle1], maxTrianglesPerNode);
 ```
 
 ### Intersect a ray with the BVH
