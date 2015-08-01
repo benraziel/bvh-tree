@@ -1,0 +1,25 @@
+{
+  "name": "bvh-tree",
+  "version": "1.0.0",
+  "description": "A Bounding Volume Hierarchy data structure, for fast ray-mesh intersection",
+  "main": "bvhtree.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/benraziel/bvh-tree.git"
+  },
+  "keywords": [
+    "BVH",
+    "mesh",
+    "ray",
+    "triangle",
+    "intersection",
+    "webgl",
+    "spatial"
+  ],
+  "author": "Ben Raziel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/benraziel/bvh-tree/issues"
+  },
+  "homepage": "https://github.com/benraziel/bvh-tree"
+}
