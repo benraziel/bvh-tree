@@ -689,3 +689,9 @@ bvhtree.BVHNode.calcBoundingSphereRadius = function(extentsMin, extentsMax) {
 
     return Math.sqrt(Math.max(extentsMinDistSqr, extentsMaxDistSqr));
 };
+
+// commonjs module definiton
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports.BVH = bvhtree.BVH;
+    module.exports.intersectRay = bvhtree.intersectRay;
+}
