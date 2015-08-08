@@ -1,6 +1,6 @@
 {
   "name": "bvh-tree",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Bounding Volume Hierarchy data structure, for fast ray-mesh intersection",
   "main": "bvhtree.js",
   "repository": {
