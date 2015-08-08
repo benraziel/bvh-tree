@@ -174,6 +174,7 @@ bvhtree.BVH = function(triangles, maxTrianglesPerNode) {
  * For rays that did intersect, we test intersection of the ray with each triangle
  * @param {Point} rayOrigin the origin position of the ray.
  * @param {Point} rayDirection the direction vector of the ray.
+ * @param {Boolean} backfaceCulling if 'true', only intersections with front-faces of the mesh will be performed.
  * @return IntersectionResult[] an array of intersection result, one for each triangle which intersected the BVH
  *
  * @typedef {Object} IntersectionResult
@@ -283,10 +284,10 @@ bvhtree.BVH.prototype.calcBoundingBoxes = function(trianglesArray) {
  * Calculates the extents (i.e the min and max coordinates) of a list of bounding boxes in the bboxArray
  * @param startIndex the index of the first triangle that we want to calc extents for
  * @param endIndex the index of the last triangle that we want to calc extents for
- * @param a small epsilon to expand the bbox by, for safety during ray-box intersections
+ * @param expandBy a small epsilon to expand the bbox by, for safety during ray-box intersections
  */
 bvhtree.BVH.prototype.calcExtents = function(startIndex, endIndex, expandBy) {
-    var expandBy = expandBy || 0.0;
+    expandBy = expandBy || 0.0;
 
     if (startIndex >= endIndex) {
         return [{'x': 0, 'y': 0, 'z': 0}, {'x': 0, 'y': 0, 'z': 0}];
@@ -319,7 +320,6 @@ bvhtree.BVH.prototype.splitNode = function(node) {
         return;
     }
 
-    // split rule is according to the node's level: first split by x axis, then by y axis, then by z axis and repeat..
     var startIndex = node._startIndex;
     var endIndex = node._endIndex;
 
@@ -600,7 +600,7 @@ bvhtree.BVHNode = function(extentsMin, extentsMax, startIndex, endIndex, level) 
     this._level = level;
     this._node0 = null;
     this._node1 = null;
-}
+};
 
 bvhtree.BVHNode.prototype.elementCount = function() {
     return this._endIndex - this._startIndex;
