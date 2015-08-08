@@ -1,4 +1,10 @@
 describe("bvhtree", function() {
+    var expectClosePoints = function(pt0, pt1) {
+        expect(pt0.x).toBeCloseTo(pt1.x);
+        expect(pt0.y).toBeCloseTo(pt1.y);
+        expect(pt0.z).toBeCloseTo(pt1.z);
+    }
+
     var twoTrianglesX = [
         [{x: -5.0, y: 20.0, z: -30.0}, {x: -2.0, y: -50.0, z: 60.0}, {x:-1.0, y:80.0, z:-90.0}],
         [{x: 5.0, y: 21.0, z: -31.0}, {x: 2.0, y: -51.0, z: 61.0}, {x:1.0, y:81.0, z:-91.0}]
@@ -21,14 +27,14 @@ describe("bvhtree", function() {
         var triangle = [{x: -1.0, y: 2.0, z: -3.0}, {x: 4.0, y: -5.0, z: 6.0}, {x: -7.0, y: 8.0, z: -9.0}];
 
         var bvh = new bvhtree.BVH([triangle], 10);
-        expect(bvh._rootNode._extentsMin).toEqual({'x': -7.0, 'y': -5.0, 'z': -9.0});
-        expect(bvh._rootNode._extentsMax).toEqual({'x': 4.0, 'y': 8.0, 'z': 6.0});
+        expectClosePoints(bvh._rootNode._extentsMin, {'x': -7.0, 'y': -5.0, 'z': -9.0});
+        expectClosePoints(bvh._rootNode._extentsMax, {'x': 4.0, 'y': 8.0, 'z': 6.0});
     });
 
     it("Should correctly calculate node extents for multiple triangles", function () {
         var bvh = new bvhtree.BVH(twoTrianglesX, 10);
-        expect(bvh._rootNode._extentsMin).toEqual({'x': -5.0, 'y': -51.0, 'z': -91.0});
-        expect(bvh._rootNode._extentsMax).toEqual({'x': 5.0, 'y': 81.0, 'z': 61.0});
+        expectClosePoints(bvh._rootNode._extentsMin, {'x': -5.0, 'y': -51.0, 'z': -91.0});
+        expectClosePoints(bvh._rootNode._extentsMax, {'x': 5.0, 'y': 81.0, 'z': 61.0});
     });
 
     it("Should not split a node before it has reached the maximum number of triangles", function () {
@@ -52,10 +58,10 @@ describe("bvhtree", function() {
         expect(bvh._rootNode._node1.elementCount()).toEqual(1);
 
         // check that correct bounding boxes has been calculated
-        expect(bvh._rootNode._node0._extentsMin.x).toEqual(-5.0);
-        expect(bvh._rootNode._node0._extentsMax.x).toEqual(-1.0);
-        expect(bvh._rootNode._node1._extentsMin.x).toEqual(1.0);
-        expect(bvh._rootNode._node1._extentsMax.x).toEqual(5.0);
+        expect(bvh._rootNode._node0._extentsMin.x).toBeCloseTo(-5.0);
+        expect(bvh._rootNode._node0._extentsMax.x).toBeCloseTo(-1.0);
+        expect(bvh._rootNode._node1._extentsMin.x).toBeCloseTo(1.0);
+        expect(bvh._rootNode._node1._extentsMax.x).toBeCloseTo(5.0);
     });
 
     it("when a ray intersects a triangle, it should return the correct intersection results", function() {

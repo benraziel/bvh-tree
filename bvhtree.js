@@ -6,6 +6,7 @@
  * @author Ben Raziel
  */
 var bvhtree = bvhtree || {};
+bvhtree.EPSILON = 1e-6;
 
 /**
  * A 3D Vector class. Based on three.js Vector3
@@ -156,7 +157,7 @@ bvhtree.BVH = function(triangles, maxTrianglesPerNode) {
 
     // create the root node, add all the triangles to it
     var triangleCount = trianglesArray.length / 9;
-    var extents = this.calcExtents(0, triangleCount);
+    var extents = this.calcExtents(0, triangleCount, bvhtree.EPSILON);
     this._rootNode = new bvhtree.BVHNode(extents[0], extents[1], 0, triangleCount, 0);
 
     this._nodesToSplit = [this._rootNode];
@@ -186,12 +187,18 @@ bvhtree.BVH.prototype.intersectRay = function(rayOrigin, rayDirection, backfaceC
     var intersectingTriangles = [];
     var i;
 
+    var invRayDirection = new bvhtree.BVHVector3(
+        1.0 / rayDirection.x,
+        1.0 / rayDirection.y,
+        1.0 / rayDirection.z
+    );
+
     // go over the BVH tree, and extract the list of triangles that lie in nodes that intersect the ray.
     // note: these triangles may not intersect the ray themselves
     while (nodesToIntersect.length > 0) {
         var node = nodesToIntersect.pop();
 
-        if (bvhtree.BVH.intersectNodeBox(rayOrigin, rayDirection, node)) {
+        if (bvhtree.BVH.intersectNodeBox(rayOrigin, invRayDirection, node)) {
             if (node._node0) {
                 nodesToIntersect.push(node._node0);
             }
@@ -276,8 +283,11 @@ bvhtree.BVH.prototype.calcBoundingBoxes = function(trianglesArray) {
  * Calculates the extents (i.e the min and max coordinates) of a list of bounding boxes in the bboxArray
  * @param startIndex the index of the first triangle that we want to calc extents for
  * @param endIndex the index of the last triangle that we want to calc extents for
+ * @param a small epsilon to expand the bbox by, for safety during ray-box intersections
  */
-bvhtree.BVH.prototype.calcExtents = function(startIndex, endIndex) {
+bvhtree.BVH.prototype.calcExtents = function(startIndex, endIndex, expandBy) {
+    var expandBy = expandBy || 0.0;
+
     if (startIndex >= endIndex) {
         return [{'x': 0, 'y': 0, 'z': 0}, {'x': 0, 'y': 0, 'z': 0}];
     }
@@ -298,7 +308,10 @@ bvhtree.BVH.prototype.calcExtents = function(startIndex, endIndex) {
         maxZ = Math.max(this._bboxArray[i*7+6], maxZ);
     }
 
-    return [{'x': minX, 'y': minY, 'z': minZ}, {'x': maxX, 'y': maxY, 'z': maxZ}];
+    return [
+        {'x': minX - expandBy, 'y': minY - expandBy, 'z': minZ - expandBy},
+        {'x': maxX + expandBy, 'y': maxY + expandBy, 'z': maxZ + expandBy}
+    ];
 };
 
 bvhtree.BVH.prototype.splitNode = function(node) {
@@ -443,8 +456,8 @@ bvhtree.BVH.prototype.splitNode = function(node) {
     this._bboxArray.set(subArr, node._startIndex * 7);
 
     // create 2 new nodes for the node we just split, and add links to them from the parent node
-    var node0Extents = this.calcExtents(node0Start, node0End);
-    var node1Extents = this.calcExtents(node1Start, node1End);
+    var node0Extents = this.calcExtents(node0Start, node0End, bvhtree.EPSILON);
+    var node1Extents = this.calcExtents(node1Start, node1End, bvhtree.EPSILON);
 
     var node0 = new bvhtree.BVHNode(node0Extents[0], node0Extents[1], node0Start, node0End, node._level + 1);
     var node1 = new bvhtree.BVHNode(node1Extents[0], node1Extents[1], node1Start, node1End, node._level + 1);
@@ -473,20 +486,9 @@ bvhtree.BVH._calcTValues = function(minVal, maxVal, rayOriginCoord, invdir) {
     return res;
 };
 
-bvhtree.BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
-    var minX = node._extentsMin.x - 1e-6;
-    var minY = node._extentsMin.y - 1e-6;
-    var minZ = node._extentsMin.z - 1e-6;
-    var maxX = node._extentsMax.x + 1e-6;
-    var maxY = node._extentsMax.y + 1e-6;
-    var maxZ = node._extentsMax.z + 1e-6;
-
-    var invdirx = 1 / rayDirection.x;
-    var invdiry = 1 / rayDirection.y;
-    var invdirz = 1 / rayDirection.z;
-
-    var t = bvhtree.BVH._calcTValues(minX, maxX, rayOrigin.x, invdirx);
-    var ty = bvhtree.BVH._calcTValues(minY, maxY, rayOrigin.y, invdiry);
+bvhtree.BVH.intersectNodeBox = function(rayOrigin, invRayDirection, node) {
+    var t = bvhtree.BVH._calcTValues(node._extentsMin.x, node._extentsMax.x, rayOrigin.x, invRayDirection.x);
+    var ty = bvhtree.BVH._calcTValues(node._extentsMin.y, node._extentsMax.y, rayOrigin.y, invRayDirection.y);
 
     if ( ( t.min > ty.max ) || ( ty.min > t.max ) ) {
         return false;
@@ -502,7 +504,7 @@ bvhtree.BVH.intersectNodeBox = function(rayOrigin, rayDirection, node) {
         t.max = ty.max;
     }
 
-    var tz = bvhtree.BVH._calcTValues(minZ, maxZ, rayOrigin.z, invdirz);
+    var tz = bvhtree.BVH._calcTValues(node._extentsMin.z, node._extentsMax.z, rayOrigin.z, invRayDirection.z);
 
     if ( ( t.min > tz.max ) || ( tz.min > t.max ) ) {
         return false;
