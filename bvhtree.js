@@ -322,128 +322,77 @@ bvhtree.BVH.prototype.splitNode = function(node) {
     // split rule is according to the node's level: first split by x axis, then by y axis, then by z axis and repeat..
     var startIndex = node._startIndex;
     var endIndex = node._endIndex;
-    var objectCenterX, objectCenterY, objectCenterZ;
-    var extentsCenterX, extentsCenterY, extentsCenterZ;
-    var i;
 
-    var node0XElements = [];
-    var node1XElements = [];
-    var node0YElements = [];
-    var node1YElements = [];
-    var node0ZElements = [];
-    var node1ZElements = [];
+    var leftNode = [ [],[],[] ];
+    var rightNode = [ [],[],[] ];
+    var extentCenters = [node.centerX(), node.centerY(), node.centerZ()];
 
-    extentsCenterX = node.centerX();
-    extentsCenterY = node.centerY();
-    extentsCenterZ = node.centerZ();
+    var extentsLength = [
+        node._extentsMax.x - node._extentsMin.x,
+        node._extentsMax.y - node._extentsMin.y,
+        node._extentsMax.z - node._extentsMin.z
+    ];
 
-    for (i = startIndex; i < endIndex; i++) {
-        objectCenterX = (this._bboxArray[i * 7 + 1] + this._bboxArray[i * 7 + 4]) * 0.5; // center = (min + max) / 2
-        objectCenterY = (this._bboxArray[i * 7 + 2] + this._bboxArray[i * 7 + 5]) * 0.5; // center = (min + max) / 2
-        objectCenterZ = (this._bboxArray[i * 7 + 3] + this._bboxArray[i * 7 + 6]) * 0.5; // center = (min + max) / 2
+    var objectCenter = [];
+    objectCenter.length = 3;
 
-        if (objectCenterX < extentsCenterX) {
-            node0XElements.push(i);
-        }
-        else {
-            node1XElements.push(i);
-        }
+    for (var i = startIndex; i < endIndex; i++) {
+        objectCenter[0] = (this._bboxArray[i * 7 + 1] + this._bboxArray[i * 7 + 4]) * 0.5; // center = (min + max) / 2
+        objectCenter[1] = (this._bboxArray[i * 7 + 2] + this._bboxArray[i * 7 + 5]) * 0.5; // center = (min + max) / 2
+        objectCenter[2] = (this._bboxArray[i * 7 + 3] + this._bboxArray[i * 7 + 6]) * 0.5; // center = (min + max) / 2
 
-        if (objectCenterY < extentsCenterY) {
-            node0YElements.push(i);
-        }
-        else {
-            node1YElements.push(i);
-        }
-
-        if (objectCenterZ < extentsCenterZ) {
-            node0ZElements.push(i);
-        }
-        else {
-            node1ZElements.push(i);
+        for (var j = 0; j < 3; j++) {
+            if (objectCenter[j] < extentCenters[j]) {
+                leftNode[j].push(i);
+            }
+            else {
+                rightNode[j].push(i);
+            }
         }
     }
 
     // check if we couldn't split the node by any of the axes (x, y or z). halt here, dont try to split any more (cause it will always fail, and we'll enter an infinite loop
-    var splitXFailed = (node0XElements.length === 0) || (node1XElements.length === 0);
-    var splitYFailed = (node0YElements.length === 0) || (node1YElements.length === 0);
-    var splitZFailed = (node0ZElements.length === 0) || (node1ZElements.length === 0);
+    var splitFailed = [];
+    splitFailed.length = 3;
 
-    if (splitXFailed && splitYFailed && splitZFailed) {
+    splitFailed[0] = (leftNode[0].length === 0) || (rightNode[0].length === 0);
+    splitFailed[1] = (leftNode[1].length === 0) || (rightNode[1].length === 0);
+    splitFailed[2] = (leftNode[2].length === 0) || (rightNode[2].length === 0);
+
+    if (splitFailed[0] && splitFailed[1] && splitFailed[2]) {
         return;
     }
 
-    // in case one of the splits failed, choose to split by the axis which resulted in the most balanced split of shapes between the two child nodes
-    var defaultAxisFailed = false;
-    var node0Elements;
-    var node1Elements;
+    // choose the longest split axis. if we can't split by it, choose next best one.
+    var splitOrder = [0, 1, 2];
 
-    if ((node._level % 3 === 0)) {
-        if (splitXFailed) {
-            defaultAxisFailed = true;
-        }
-        else {
-            node0Elements = node0XElements;
-            node1Elements = node1XElements;
-        }
-    }
+    splitOrder.sort(function(axis0, axis1) {
+        return (extentsLength[axis1] - extentsLength[axis0])
+    });
 
-    if ((node._level % 3 === 1)) {
-        if (splitYFailed) {
-            defaultAxisFailed = true;
-        }
-        else {
-            node0Elements = node0YElements;
-            node1Elements = node1YElements;
-        }
-    }
+    var leftElements;
+    var rightElements;
 
-    if ((node._level % 3 === 2)) {
-        if (splitZFailed) {
-            defaultAxisFailed = true;
-        }
-        else {
-            node0Elements = node0ZElements;
-            node1Elements = node1ZElements;
-        }
-    }
+    for (j = 0; j < 3; j++) {
+        var candidateIndex = splitOrder[j];
 
-    if (defaultAxisFailed) {
-        node0Elements = [];
-        node1Elements = [];
-        var xImbalance = Math.abs(node0XElements.length - node1XElements.length);
-        var yImbalance = Math.abs(node0YElements.length - node1YElements.length);
-        var zImbalance = Math.abs(node0ZElements.length - node1ZElements.length);
+        if (!splitFailed[candidateIndex]) {
+            leftElements = leftNode[candidateIndex];
+            rightElements = rightNode[candidateIndex];
 
-        if (xImbalance < yImbalance) {
-            if (xImbalance < zImbalance) { // split by x
-                node0Elements = node0XElements;
-                node1Elements = node1XElements;
-            }
-            else { // split by z
-                node0Elements = node0ZElements;
-                node1Elements = node1ZElements;
-            }
-        }
-        else if (yImbalance < zImbalance) { // split by y
-            node0Elements = node0YElements;
-            node1Elements = node1YElements;
-        }
-        else { // split by z
-            node0Elements = node0ZElements;
-            node1Elements = node1ZElements;
+            break;
         }
     }
 
     // sort the elements in range (startIndex, endIndex) according to which node they should be at
     var node0Start = startIndex;
-    var node0End = node0Start + node0Elements.length;
+    var node0End = node0Start + leftElements.length;
     var node1Start = node0End;
     var node1End = endIndex;
     var currElement;
 
     var helperPos = node._startIndex;
-    var concatenatedElements = node0Elements.concat(node1Elements);
+    var concatenatedElements = leftElements.concat(rightElements);
 
     for (i = 0; i < concatenatedElements.length; i++) {
         currElement = concatenatedElements[i];
